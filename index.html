@@ -54,6 +54,15 @@
   h1{font-family:'Cinzel',serif;font-weight:700;font-size:22px;margin:0;letter-spacing:.02em;color:#F5EFE0;}
   .eyebrow{display:block;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-top:3px;}
   .status{display:flex;align-items:center;gap:7px;}
+  .status-clickable{display:flex;align-items:center;gap:6px;cursor:pointer;padding:2px 3px;border-radius:6px;}
+  .status-clickable:active{background:rgba(255,255,255,.06);}
+  .diag-row{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px;line-height:1.4;}
+  .diag-row:last-child{border-bottom:none;}
+  .diag-ok{color:#9FE0A8;}
+  .diag-fail{color:var(--rust);}
+  .diag-meta{font-size:11px;color:var(--muted);margin-top:8px;}
+  .diag-credit{font-size:10px;color:var(--muted);margin-top:10px;opacity:.7;}
+  .diag-credit a{color:var(--muted);}
   .status-text{font-size:10px;letter-spacing:.04em;color:var(--muted);white-space:nowrap;}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;}
   .dot.offline{background:var(--rust);}
@@ -74,17 +83,16 @@
   .reorder button{background:none;border:none;color:var(--muted);font-size:9px;cursor:pointer;padding:2px 4px;line-height:1;}
   .reorder button:disabled{opacity:.2;cursor:default;}
   .flag-plate{
-    width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);
-    display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
+    width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);
+    display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
   }
-  .code{
-    font-family:'Cinzel',serif;font-weight:600;font-size:12px;width:32px;flex-shrink:0;
-    letter-spacing:.01em;color:#E7DEF6;cursor:default;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  }
+  .code-wrap{display:flex;flex-direction:column;justify-content:center;width:60px;flex-shrink:0;overflow:hidden;}
+  .code-main{font-family:'Cinzel',serif;font-weight:700;font-size:14px;color:#F0E9FA;letter-spacing:.02em;line-height:1.2;}
+  .code-name{font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;margin-top:1px;}
   .value-input{
-    flex:1;min-width:0;font-family:'Space Mono',monospace;font-size:18px;font-weight:700;
+    flex:1;min-width:0;font-family:'Space Mono',monospace;font-size:17px;font-weight:600;
     letter-spacing:.01em;font-variant-numeric:tabular-nums;background:var(--parchment);color:var(--ink);
-    border:none;border-radius:8px;padding:8px 9px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+    border:none;border-radius:8px;padding:7px 9px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
     text-align:right;cursor:pointer;caret-color:transparent;
   }
   .value-input:focus{outline:2px solid var(--gold);outline-offset:1px;}
@@ -137,10 +145,12 @@
     h1{font-size:19px;}
     .subline{padding:6px 12px 0;font-size:10px;}
     #rows{padding:10px 12px 4px;gap:6px;}
-    .row{padding:6px 6px;gap:5px;}
-    .flag-plate{width:24px;height:24px;font-size:13px;border-radius:7px;}
-    .code{width:27px;font-size:11px;}
-    .value-input{font-size:16px;padding:7px 7px;}
+    .row{padding:6px 6px;gap:6px;}
+    .flag-plate{width:28px;height:28px;font-size:15px;border-radius:7px;}
+    .code-wrap{width:50px;}
+    .code-main{font-size:12.5px;}
+    .code-name{font-size:9px;}
+    .value-input{font-size:15px;padding:7px 7px;}
     .remove{font-size:11px;}
     .add-row{margin:6px 12px 14px;padding:11px;font-size:13px;}
     .guru-strip{margin:4px 12px 18px;padding:10px 11px;}
@@ -154,8 +164,10 @@
       <span class="eyebrow">A Fake Guru App</span>
     </div>
     <div class="status">
-      <span id="statusDot" class="dot"></span>
-      <span id="statusText" class="status-text">loading</span>
+      <span class="status-clickable" id="statusGroup" title="Tap to see the last fetch attempt">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText" class="status-text">loading</span>
+      </span>
       <button id="refreshBtn" title="Refresh rates">⟳</button>
     </div>
   </header>
@@ -174,6 +186,14 @@
       <input id="searchInput" placeholder="Whisper a currency name..." autocomplete="off">
       <div id="searchResults"></div>
       <button id="closeModal">Close the grimoire</button>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="diagModal">
+    <div class="modal-card">
+      <span class="modal-title">The Guru's Ledger</span>
+      <div id="diagBody"></div>
+      <button id="diagClose" class="calc-done">Close</button>
     </div>
   </div>
 
@@ -229,8 +249,29 @@
     ILS:{name:'Israeli Shekel',flag:'🇮🇱'}
   };
   const ZERO_DECIMALS = new Set(['JPY','KRW','IDR','HUF','ISK']);
-  const FRANKFURTER = 'https://api.frankfurter.app';
   const STORE_KEY = 'moneymagick-state';
+
+  const RATE_SOURCES = [
+    {
+      name: 'Frankfurter (ECB)',
+      url: (codes) => 'https://api.frankfurter.dev/latest?from=USD&to=' + codes.join(','),
+      parse: async (resp) => {
+        const data = await resp.json();
+        if(!data || typeof data.rates !== 'object') throw new Error('unexpected response shape');
+        return { rates: Object.assign({USD:1}, data.rates), date: data.date };
+      }
+    },
+    {
+      name: 'ExchangeRate-API (backup)',
+      url: () => 'https://open.er-api.com/v6/latest/USD',
+      parse: async (resp) => {
+        const data = await resp.json();
+        if(!data || data.result !== 'success' || typeof data.rates !== 'object') throw new Error('unexpected response shape');
+        const date = data.time_last_update_utc ? new Date(data.time_last_update_utc).toISOString().slice(0,10) : null;
+        return { rates: Object.assign({USD:1}, data.rates), date: date };
+      }
+    }
+  ];
 
   const GURU_WISDOM = [
     "A dollar saved is a dollar the exchange rate will eventually humble.",
@@ -260,6 +301,8 @@
     rates: {USD:1},
     ratesTimestamp: null,
     ratesDate: null,
+    rateSource: null,
+    lastCheckLog: [],
     online: null
   };
 
@@ -279,6 +322,8 @@
   const calcPreview = document.getElementById('calcPreview');
   const calcFlag = document.getElementById('calcFlag');
   const calcCodeLabel = document.getElementById('calcCodeLabel');
+  const diagModal = document.getElementById('diagModal');
+  const statusGroup = document.getElementById('statusGroup');
 
   function showNewWisdom(){
     guruQuote.innerHTML = randomWisdom() + '<span class="sig">— The Guru</span>';
@@ -308,7 +353,8 @@
         currencies: state.currencies,
         rates: state.rates,
         ratesTimestamp: state.ratesTimestamp,
-        ratesDate: state.ratesDate
+        ratesDate: state.ratesDate,
+        rateSource: state.rateSource
       }));
     }catch(e){ /* best-effort persistence */ }
   }
@@ -322,33 +368,75 @@
         if(saved.rates) state.rates = saved.rates;
         state.ratesTimestamp = saved.ratesTimestamp || null;
         state.ratesDate = saved.ratesDate || null;
+        state.rateSource = saved.rateSource || null;
         state.activeCode = state.currencies[0];
       }
     }catch(e){ /* no saved state yet */ }
   }
 
+  function validateRates(rates, codes){
+    for(const c of codes){
+      if(c === 'USD') continue;
+      if(typeof rates[c] !== 'number' || !isFinite(rates[c])) return false;
+    }
+    return true;
+  }
+
+  async function fetchWithTimeout(url, ms){
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try{
+      return await fetch(url, { signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function fetchRates(codes){
     const others = codes.filter(c => c !== 'USD');
-    try{
-      if(others.length === 0){
-        state.rates = {USD:1};
-        state.ratesTimestamp = Date.now();
-        state.ratesDate = new Date().toISOString().slice(0,10);
-        state.online = true;
-      } else {
-        const url = FRANKFURTER + '/latest?from=USD&to=' + others.join(',');
-        const resp = await fetch(url);
-        if(!resp.ok) throw new Error('bad response');
-        const data = await resp.json();
-        state.rates = Object.assign({USD:1}, data.rates);
-        state.ratesTimestamp = Date.now();
-        state.ratesDate = data.date;
-        state.online = true;
-      }
+    const log = [];
+
+    if(others.length === 0){
+      state.rates = {USD:1};
+      state.ratesTimestamp = Date.now();
+      state.ratesDate = new Date().toISOString().slice(0,10);
+      state.online = true;
+      state.rateSource = null;
+      state.lastCheckLog = [{ source: '—', ok: true, note: 'no outside currencies needed' }];
       saveState();
-    }catch(e){
-      state.online = false;
+      updateStatus();
+      return;
     }
+
+    for(const src of RATE_SOURCES){
+      let note = '';
+      for(let attempt = 1; attempt <= 2; attempt++){
+        try{
+          const resp = await fetchWithTimeout(src.url(others), 7000);
+          if(!resp.ok) throw new Error('HTTP ' + resp.status);
+          const { rates, date } = await src.parse(resp);
+          if(!validateRates(rates, others)) throw new Error('response missing a needed currency');
+
+          state.rates = Object.assign({USD:1}, rates);
+          state.ratesTimestamp = Date.now();
+          state.ratesDate = date || new Date().toISOString().slice(0,10);
+          state.online = true;
+          state.rateSource = src.name;
+          log.push({ source: src.name, ok: true, note: attempt === 1 ? 'ok' : 'ok on retry' });
+          state.lastCheckLog = log;
+          saveState();
+          updateStatus();
+          return;
+        }catch(e){
+          note = (e && e.name === 'AbortError') ? 'timed out (7s)' : ((e && e.message) || 'failed');
+          if(attempt < 2) await new Promise(r => setTimeout(r, 900));
+        }
+      }
+      log.push({ source: src.name, ok: false, note: note });
+    }
+
+    state.online = false;
+    state.lastCheckLog = log;
     updateStatus();
   }
 
@@ -357,17 +445,32 @@
       statusDot.classList.add('offline');
       statusText.textContent = 'offline';
       subline.textContent = state.ratesTimestamp
-        ? 'Showing last saved rates (' + timeAgo(state.ratesTimestamp) + ')'
+        ? 'Offline — last synced ' + timeAgo(state.ratesTimestamp) + (state.rateSource ? ' via ' + state.rateSource : '')
         : 'Not synced yet — connect once to fetch rates';
     } else if(state.online === true){
       statusDot.classList.remove('offline');
       statusText.textContent = 'live';
-      subline.textContent = 'ECB reference rates as of ' + (state.ratesDate || '—') + ' • updated ' + timeAgo(state.ratesTimestamp);
+      subline.textContent = 'Live via ' + (state.rateSource || 'cache') + ' • updated ' + timeAgo(state.ratesTimestamp);
     } else {
       statusDot.classList.remove('offline');
       statusText.textContent = 'loading';
       subline.textContent = 'Consulting the Guru...';
     }
+  }
+
+  function renderDiagnostics(){
+    const rows = (state.lastCheckLog && state.lastCheckLog.length)
+      ? state.lastCheckLog.map(l =>
+          '<div class="diag-row ' + (l.ok ? 'diag-ok' : 'diag-fail') + '">' +
+          (l.ok ? '✓ ' : '✕ ') + l.source + ' — ' + l.note +
+          '</div>'
+        ).join('')
+      : '<div class="diag-row">No checks run yet.</div>';
+    const cacheCount = Object.keys(state.rates || {}).length;
+    const meta = '<div class="diag-meta">Holding ' + cacheCount + ' cached rate(s) from ' +
+      (state.ratesDate || '—') + ', last refreshed ' + timeAgo(state.ratesTimestamp) + '.</div>';
+    const credit = '<div class="diag-credit">Rates by Frankfurter (ECB) and <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>.</div>';
+    document.getElementById('diagBody').innerHTML = rows + meta + credit;
   }
 
   function computeValue(code){
@@ -391,7 +494,7 @@
             '<button class="down" ' + (idx===state.currencies.length-1?'disabled':'') + '>▼</button>' +
           '</div>' +
           '<div class="flag-plate">' + meta.flag + '</div>' +
-          '<span class="code" title="' + meta.name + '">' + code + '</span>' +
+          '<div class="code-wrap"><span class="code-main">' + code + '</span><span class="code-name">' + meta.name + '</span></div>' +
           '<input class="value-input" readonly data-code="' + code + '" value="' + val + '">' +
           '<button class="remove" ' + (state.currencies.length<=1?'disabled':'') + '>✕</button>' +
         '</div>'
@@ -544,6 +647,13 @@
     statusText.textContent = 'updating';
     fetchRates(state.currencies).then(() => renderRows());
   });
+
+  statusGroup.addEventListener('click', () => {
+    renderDiagnostics();
+    diagModal.classList.remove('hidden');
+  });
+  document.getElementById('diagClose').addEventListener('click', () => diagModal.classList.add('hidden'));
+  diagModal.addEventListener('click', e => { if(e.target === diagModal) diagModal.classList.add('hidden'); });
 
   document.getElementById('addBtn').addEventListener('click', () => {
     addModal.classList.remove('hidden');
