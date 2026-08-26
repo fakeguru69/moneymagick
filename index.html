@@ -346,6 +346,15 @@
     return new Date(ts).toLocaleDateString();
   }
 
+  function shortDateTime(ts){
+    if(!ts) return '—';
+    const d = new Date(ts);
+    const day = d.getDate();
+    const month = d.toLocaleString(undefined, { month: 'short' });
+    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return day + ' ' + month + ', ' + time;
+  }
+
   function saveState(){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify({
@@ -391,21 +400,9 @@
     }
   }
 
-  async function fetchRates(codes){
-    const others = codes.filter(c => c !== 'USD');
+  async function fetchRates(){
+    const others = Object.keys(CURRENCY_META).filter(c => c !== 'USD');
     const log = [];
-
-    if(others.length === 0){
-      state.rates = {USD:1};
-      state.ratesTimestamp = Date.now();
-      state.ratesDate = new Date().toISOString().slice(0,10);
-      state.online = true;
-      state.rateSource = null;
-      state.lastCheckLog = [{ source: '—', ok: true, note: 'no outside currencies needed' }];
-      saveState();
-      updateStatus();
-      return;
-    }
 
     for(const src of RATE_SOURCES){
       let note = '';
@@ -444,7 +441,7 @@
       statusDot.classList.add('offline');
       statusText.textContent = 'offline';
       subline.textContent = state.ratesTimestamp
-        ? 'Offline — last synced ' + timeAgo(state.ratesTimestamp) + (state.rateSource ? ' via ' + state.rateSource : '')
+        ? 'Offline — last updated ' + shortDateTime(state.ratesTimestamp)
         : 'Not synced yet — connect once to fetch rates';
       subline.style.display = '';
     } else if(state.online === true){
@@ -483,8 +480,8 @@
       ? '<div class="diag-meta">A ✕ just means that source didn\'t answer, so the app moved on to the next one automatically — nothing you need to do.</div>'
       : '';
     const cacheCount = Object.keys(state.rates || {}).length;
-    const meta = '<div class="diag-meta">Holding ' + cacheCount + ' cached rate(s) from ' +
-      (state.ratesDate || '—') + ', last refreshed ' + timeAgo(state.ratesTimestamp) + '.</div>';
+    const meta = '<div class="diag-meta">Holding ' + cacheCount + ' cached rate(s) — rates as of ' +
+      (state.ratesDate || '—') + ', last synced ' + shortDateTime(state.ratesTimestamp) + '.</div>';
     const credit = '<div class="diag-credit">Rates by Frankfurter (ECB) and <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>.</div>';
     document.getElementById('diagBody').innerHTML = rows + explain + meta + credit;
   }
@@ -542,7 +539,7 @@
     if(state.currencies.includes(code)) return;
     state.currencies.push(code);
     renderRows();
-    fetchRates(state.currencies).then(() => { renderRows(); });
+    fetchRates().then(() => { renderRows(); });
   }
 
   function renderSearchResults(query){
@@ -661,7 +658,7 @@
 
   document.getElementById('refreshBtn').addEventListener('click', () => {
     statusText.textContent = 'updating';
-    fetchRates(state.currencies).then(() => renderRows());
+    fetchRates().then(() => renderRows());
   });
 
   statusGroup.addEventListener('click', () => {
@@ -692,8 +689,18 @@
     loadState();
     renderRows();
     updateStatus();
-    await fetchRates(state.currencies);
+    await fetchRates();
     renderRows();
+
+    window.addEventListener('offline', () => {
+      state.online = false;
+      updateStatus();
+    });
+    window.addEventListener('online', () => {
+      state.online = null;
+      updateStatus();
+      fetchRates().then(() => renderRows());
+    });
   })();
 })();
 </script>
