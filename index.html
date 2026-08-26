@@ -11,7 +11,8 @@
     --night-deep:#120B22;
     --night-panel:#221639;
     --night-panel-2:#2A1C48;
-    --parchment:#F1E7D0;
+    --parchment:#33245A;
+    --tile-text:#F0E9FA;
     --ink:#2A1B3D;
     --gold:#D4AF37;
     --violet-glow:#8F6FFF;
@@ -86,13 +87,13 @@
     width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);
     display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
   }
-  .code-wrap{display:flex;flex-direction:column;justify-content:center;width:60px;flex-shrink:0;overflow:hidden;}
-  .code-main{font-family:'Cinzel',serif;font-weight:700;font-size:14px;color:#F0E9FA;letter-spacing:.02em;line-height:1.2;}
-  .code-name{font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;margin-top:1px;}
+  .code-wrap{display:flex;flex-direction:column;justify-content:center;width:68px;flex-shrink:0;overflow:hidden;}
+  .code-main{font-family:'Cinzel',serif;font-weight:700;font-size:16px;color:#F0E9FA;letter-spacing:.02em;line-height:1.2;}
+  .code-name{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;margin-top:1px;}
   .value-input{
     flex:1;min-width:0;font-family:'Space Mono',monospace;font-size:17px;font-weight:600;
-    letter-spacing:.01em;font-variant-numeric:tabular-nums;background:var(--parchment);color:var(--ink);
-    border:none;border-radius:8px;padding:7px 9px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+    letter-spacing:.01em;font-variant-numeric:tabular-nums;background:var(--parchment);color:var(--tile-text);
+    border:none;border-radius:8px;padding:7px 9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
     text-align:right;cursor:pointer;caret-color:transparent;
   }
   .value-input:focus{outline:2px solid var(--gold);outline-offset:1px;}
@@ -118,7 +119,7 @@
     padding:16px;max-height:82vh;display:flex;flex-direction:column;gap:10px;border-top:1px solid rgba(212,175,55,.3);
   }
   .modal-title{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;color:var(--gold);font-weight:600;}
-  #searchInput{padding:11px 12px;border-radius:8px;border:none;background:var(--parchment);color:var(--ink);font-size:15px;font-family:'Inter';}
+  #searchInput{padding:11px 12px;border-radius:8px;border:none;background:var(--parchment);color:var(--tile-text);font-size:15px;font-family:'Inter';}
   #searchResults{overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
   .result-item{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:8px;cursor:pointer;}
   .result-item:active{background:rgba(255,255,255,.08);}
@@ -131,8 +132,8 @@
   .calc-flag{font-size:19px;}
   .calc-code{font-family:'Cinzel',serif;font-weight:600;color:#E7DEF6;font-size:14px;letter-spacing:.04em;}
   .calc-display{background:var(--parchment);border-radius:10px;padding:12px 12px;}
-  .calc-expr{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;color:var(--ink);text-align:right;word-break:break-all;}
-  .calc-preview{font-family:'Space Mono',monospace;font-size:12px;color:#6b5a45;text-align:right;margin-top:3px;min-height:15px;}
+  .calc-expr{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;color:var(--tile-text);text-align:right;word-break:break-all;}
+  .calc-preview{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);text-align:right;margin-top:3px;min-height:15px;}
   .calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .calc-btn{padding:13px 0;border-radius:10px;background:rgba(255,255,255,.06);color:#EDE7F5;font-family:'Space Mono',monospace;font-size:17px;border:none;cursor:pointer;}
   .calc-btn.op{background:rgba(212,175,55,.16);color:var(--gold);}
@@ -148,8 +149,8 @@
     .row{padding:6px 6px;gap:6px;}
     .flag-plate{width:28px;height:28px;font-size:15px;border-radius:7px;}
     .code-wrap{width:50px;}
-    .code-main{font-size:12.5px;}
-    .code-name{font-size:9px;}
+    .code-main{font-size:14.5px;}
+    .code-name{font-size:9.5px;}
     .value-input{font-size:15px;padding:7px 7px;}
     .remove{font-size:11px;}
     .add-row{margin:6px 12px 14px;padding:11px;font-size:13px;}
@@ -254,7 +255,7 @@
   const RATE_SOURCES = [
     {
       name: 'Frankfurter (ECB)',
-      url: (codes) => 'https://api.frankfurter.dev/latest?from=USD&to=' + codes.join(','),
+      url: (codes) => 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=' + codes.join(','),
       parse: async (resp) => {
         const data = await resp.json();
         if(!data || typeof data.rates !== 'object') throw new Error('unexpected response shape');
@@ -447,30 +448,47 @@
       subline.textContent = state.ratesTimestamp
         ? 'Offline — last synced ' + timeAgo(state.ratesTimestamp) + (state.rateSource ? ' via ' + state.rateSource : '')
         : 'Not synced yet — connect once to fetch rates';
+      subline.style.display = '';
     } else if(state.online === true){
       statusDot.classList.remove('offline');
       statusText.textContent = 'live';
-      subline.textContent = 'Live via ' + (state.rateSource || 'cache') + ' • updated ' + timeAgo(state.ratesTimestamp);
+      subline.textContent = '';
+      subline.style.display = 'none';
     } else {
       statusDot.classList.remove('offline');
       statusText.textContent = 'loading';
       subline.textContent = 'Consulting the Guru...';
+      subline.style.display = '';
     }
   }
 
+  function friendlyNote(note){
+    const m = /^HTTP (\d+)$/.exec(note || '');
+    if(!m) return note;
+    const code = m[1];
+    if(code === '404') return 'HTTP 404 — that source\'s address didn\'t respond (endpoint moved or down)';
+    if(code === '429') return 'HTTP 429 — that source is rate-limiting requests right now';
+    if(code[0] === '5') return 'HTTP ' + code + ' — that source\'s server had an error';
+    return 'HTTP ' + code + ' — that source rejected the request';
+  }
+
   function renderDiagnostics(){
+    const hasFail = state.lastCheckLog && state.lastCheckLog.some(l => !l.ok);
     const rows = (state.lastCheckLog && state.lastCheckLog.length)
       ? state.lastCheckLog.map(l =>
           '<div class="diag-row ' + (l.ok ? 'diag-ok' : 'diag-fail') + '">' +
-          (l.ok ? '✓ ' : '✕ ') + l.source + ' — ' + l.note +
+          (l.ok ? '✓ ' : '✕ ') + l.source + ' — ' + (l.ok ? l.note : friendlyNote(l.note)) +
           '</div>'
         ).join('')
       : '<div class="diag-row">No checks run yet.</div>';
+    const explain = hasFail
+      ? '<div class="diag-meta">A ✕ just means that source didn\'t answer, so the app moved on to the next one automatically — nothing you need to do.</div>'
+      : '';
     const cacheCount = Object.keys(state.rates || {}).length;
     const meta = '<div class="diag-meta">Holding ' + cacheCount + ' cached rate(s) from ' +
       (state.ratesDate || '—') + ', last refreshed ' + timeAgo(state.ratesTimestamp) + '.</div>';
     const credit = '<div class="diag-credit">Rates by Frankfurter (ECB) and <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>.</div>';
-    document.getElementById('diagBody').innerHTML = rows + meta + credit;
+    document.getElementById('diagBody').innerHTML = rows + explain + meta + credit;
   }
 
   function computeValue(code){
