@@ -487,8 +487,7 @@
     const explain = hasFail
       ? '<div class="diag-meta">A ✕ just means that source didn\'t answer, so the app moved on to the next one automatically — nothing you need to do.</div>'
       : '';
-    const cacheCount = Object.keys(state.rates || {}).length;
-    const meta = '<div class="diag-meta">Holding ' + cacheCount + ' cached rate(s) — rates as of ' +
+    const meta = '<div class="diag-meta">Rates as of ' +
       (state.ratesDate || '—') + ', last synced ' + shortDateTime(state.ratesTimestamp) + '.</div>';
     const credit = '<div class="diag-credit">Rates by Frankfurter (ECB) and <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>.</div>';
     document.getElementById('diagBody').innerHTML = rows + explain + meta + credit;
