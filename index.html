@@ -458,13 +458,18 @@
   }
 
   function friendlyNote(note){
-    const m = /^HTTP (\d+)$/.exec(note || '');
-    if(!m) return note;
-    const code = m[1];
-    if(code === '404') return 'HTTP 404 — that source\'s address didn\'t respond (endpoint moved or down)';
-    if(code === '429') return 'HTTP 429 — that source is rate-limiting requests right now';
-    if(code[0] === '5') return 'HTTP ' + code + ' — that source\'s server had an error';
-    return 'HTTP ' + code + ' — that source rejected the request';
+    const httpMatch = /^HTTP (\d+)$/.exec(note || '');
+    if(httpMatch){
+      const code = httpMatch[1];
+      if(code === '404') return "couldn't be found — its address may have moved";
+      if(code === '429') return 'is busy right now, try again later';
+      if(code[0] === '5') return 'had a server problem';
+      return "didn't accept the request";
+    }
+    if(note === 'unexpected response shape') return "sent back something the app didn't understand";
+    if(note === 'response missing a needed currency') return "didn't have all the rates needed";
+    if(note && note.indexOf('timed out') === 0) return 'took too long to respond';
+    return "couldn't be reached";
   }
 
   function renderDiagnostics(){
