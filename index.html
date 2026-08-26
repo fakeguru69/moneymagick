@@ -244,7 +244,7 @@
     BRL:{name:'Brazilian Real',flag:'🇧🇷'}, ZAR:{name:'South African Rand',flag:'🇿🇦'}, TRY:{name:'Turkish Lira',flag:'🇹🇷'},
     SEK:{name:'Swedish Krona',flag:'🇸🇪'}, NOK:{name:'Norwegian Krone',flag:'🇳🇴'}, DKK:{name:'Danish Krone',flag:'🇩🇰'},
     PLN:{name:'Polish Zloty',flag:'🇵🇱'}, CZK:{name:'Czech Koruna',flag:'🇨🇿'}, HUF:{name:'Hungarian Forint',flag:'🇭🇺'},
-    RON:{name:'Romanian Leu',flag:'🇷🇴'}, BGN:{name:'Bulgarian Lev',flag:'🇧🇬'}, ISK:{name:'Icelandic Krona',flag:'🇮🇸'},
+    RON:{name:'Romanian Leu',flag:'🇷🇴'}, ISK:{name:'Icelandic Krona',flag:'🇮🇸'},
     ILS:{name:'Israeli Shekel',flag:'🇮🇱'}
   };
   const ZERO_DECIMALS = new Set(['JPY','KRW','IDR','HUF','ISK']);
@@ -373,6 +373,9 @@
       if(raw){
         const saved = JSON.parse(raw);
         if(saved.currencies && saved.currencies.length) state.currencies = saved.currencies;
+        // drop any currency no longer supported (e.g. retired after adopting the euro)
+        state.currencies = state.currencies.filter(c => CURRENCY_META[c]);
+        if(state.currencies.length === 0) state.currencies = ['USD'];
         if(saved.rates) state.rates = saved.rates;
         state.ratesTimestamp = saved.ratesTimestamp || null;
         state.ratesDate = saved.ratesDate || null;
