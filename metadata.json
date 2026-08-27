@@ -1,0 +1,8 @@
+{
+  "name": "MoneyMagick",
+  "description": "A fake guru themed currency exchange rate tracker and calculator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
